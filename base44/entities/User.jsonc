@@ -1,0 +1,28 @@
+{
+  "properties": {
+    "role": {
+      "type": "string",
+      "description": "The role of the user in the app",
+      "enum": [
+        "admin",
+        "user"
+      ]
+    },
+    "coach_nome": {
+      "type": "string",
+      "description": "Nome de exibi\u00e7\u00e3o do profissional"
+    },
+    "medidas_ativas": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Medidas de periometria ativas para o profissional"
+    }
+  },
+  "required": [
+    "role"
+  ],
+  "name": "User",
+  "type": "object"
+}

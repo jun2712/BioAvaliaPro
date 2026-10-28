@@ -1,0 +1,166 @@
+{
+  "name": "CalculoProteina",
+  "type": "object",
+  "properties": {
+    "cliente_id": {
+      "type": "string",
+      "title": "Cliente"
+    },
+    "nome": {
+      "type": "string",
+      "title": "Nome do cliente"
+    },
+    "whatsapp": {
+      "type": "string",
+      "title": "WhatsApp"
+    },
+    "coach": {
+      "type": "string",
+      "title": "Coach respons\u00e1vel"
+    },
+    "token": {
+      "type": "string",
+      "title": "Token do link p\u00fablico"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pendente",
+        "respondida"
+      ],
+      "default": "pendente",
+      "title": "Status"
+    },
+    "sexo": {
+      "type": "string",
+      "enum": [
+        "Feminino",
+        "Masculino"
+      ],
+      "title": "Sexo"
+    },
+    "idade": {
+      "type": "number",
+      "title": "Idade (anos)"
+    },
+    "peso": {
+      "type": "number",
+      "title": "Peso informado (kg)"
+    },
+    "altura": {
+      "type": "number",
+      "title": "Altura (cm)"
+    },
+    "nivel_atividade": {
+      "type": "string",
+      "enum": [
+        "sedentario",
+        "leve",
+        "moderado",
+        "intenso"
+      ],
+      "title": "N\u00edvel de atividade f\u00edsica"
+    },
+    "objetivo": {
+      "type": "string",
+      "enum": [
+        "bem_estar",
+        "ganho_massa",
+        "emagrecimento"
+      ],
+      "title": "Objetivo principal"
+    },
+    "usa_glp1": {
+      "type": "boolean",
+      "title": "Usa an\u00e1logos de GLP-1"
+    },
+    "fator": {
+      "type": "number",
+      "title": "Fator calculado (g/kg)"
+    },
+    "gramas_dia": {
+      "type": "number",
+      "title": "Meta di\u00e1ria de prote\u00edna (g)"
+    },
+    "refeicao_min": {
+      "type": "number",
+      "title": "Prote\u00edna m\u00ednima por refei\u00e7\u00e3o (g)"
+    },
+    "refeicao_max": {
+      "type": "number",
+      "title": "Prote\u00edna m\u00e1xima por refei\u00e7\u00e3o (g)"
+    },
+    "refeicoes": {
+      "type": "number",
+      "title": "N\u00famero de refei\u00e7\u00f5es sugerido"
+    },
+    "respondida_em": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Respondida em"
+    }
+  },
+  "required": [
+    "cliente_id",
+    "token"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.coach": "{{user.data.coach_nome}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.coach": "{{user.data.coach_nome}}"
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.coach": "{{user.data.coach_nome}}"
+        }
+      ]
+    }
+  }
+}

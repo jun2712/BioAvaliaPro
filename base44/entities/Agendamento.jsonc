@@ -1,0 +1,101 @@
+{
+  "name": "Agendamento",
+  "type": "object",
+  "properties": {
+    "cliente_id": {
+      "type": "string",
+      "title": "Cliente"
+    },
+    "data": {
+      "type": "string",
+      "format": "date",
+      "title": "Data"
+    },
+    "hora": {
+      "type": "string",
+      "title": "Hora"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "avaliacao",
+        "retorno",
+        "anamnese",
+        "outro"
+      ],
+      "default": "avaliacao",
+      "title": "Tipo de atendimento"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "agendado",
+        "cancelado"
+      ],
+      "default": "agendado",
+      "title": "Status"
+    },
+    "google_event_id": {
+      "type": "string",
+      "title": "ID do evento no Google Calendar"
+    },
+    "google_link": {
+      "type": "string",
+      "title": "Link do evento no Google Calendar"
+    }
+  },
+  "required": [
+    "cliente_id",
+    "data"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

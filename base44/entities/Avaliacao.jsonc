@@ -1,0 +1,204 @@
+{
+  "name": "Avaliacao",
+  "type": "object",
+  "properties": {
+    "cliente_id": {
+      "type": "string",
+      "title": "Cliente"
+    },
+    "coach": {
+      "type": "string",
+      "title": "Coach respons\u00e1vel"
+    },
+    "data": {
+      "type": "string",
+      "format": "date",
+      "title": "Data da avalia\u00e7\u00e3o"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "inicial",
+        "acompanhamento",
+        "final"
+      ],
+      "default": "acompanhamento",
+      "title": "Tipo de avalia\u00e7\u00e3o"
+    },
+    "peso": {
+      "type": "number",
+      "title": "Peso (kg)"
+    },
+    "musculo": {
+      "type": "number",
+      "title": "M\u00fasculo (%)"
+    },
+    "idade_corporal": {
+      "type": "number",
+      "title": "Idade corporal (anos)"
+    },
+    "imc": {
+      "type": "number",
+      "title": "IMC"
+    },
+    "gordura_corporal": {
+      "type": "number",
+      "title": "Gordura corporal (%)"
+    },
+    "gordura_visceral": {
+      "type": "number",
+      "title": "Gordura visceral (n\u00edvel)"
+    },
+    "metabolismo_basal": {
+      "type": "number",
+      "title": "Metabolismo basal (kcal)"
+    },
+    "altura": {
+      "type": "number",
+      "title": "Altura (cm)"
+    },
+    "pescoco": {
+      "type": "number",
+      "title": "Pesco\u00e7o (cm)"
+    },
+    "antebraco_direito": {
+      "type": "number",
+      "title": "Antebra\u00e7o direito (cm)"
+    },
+    "antebraco_esquerdo": {
+      "type": "number",
+      "title": "Antebra\u00e7o esquerdo (cm)"
+    },
+    "femur": {
+      "type": "number",
+      "title": "F\u00eamur (cm)"
+    },
+    "torax": {
+      "type": "number",
+      "title": "T\u00f3rax (cm)"
+    },
+    "braco_direito": {
+      "type": "number",
+      "title": "Bra\u00e7o direito (cm)"
+    },
+    "braco_esquerdo": {
+      "type": "number",
+      "title": "Bra\u00e7o esquerdo (cm)"
+    },
+    "cintura": {
+      "type": "number",
+      "title": "Cintura (cm)"
+    },
+    "abdome": {
+      "type": "number",
+      "title": "Abdome (cm)"
+    },
+    "quadril": {
+      "type": "number",
+      "title": "Quadril (cm)"
+    },
+    "coxa_direita": {
+      "type": "number",
+      "title": "Coxa direita (cm)"
+    },
+    "coxa_esquerda": {
+      "type": "number",
+      "title": "Coxa esquerda (cm)"
+    },
+    "panturrilha_direita": {
+      "type": "number",
+      "title": "Panturrilha direita (cm)"
+    },
+    "panturrilha_esquerda": {
+      "type": "number",
+      "title": "Panturrilha esquerda (cm)"
+    },
+    "punho": {
+      "type": "number",
+      "title": "Punho (cm)"
+    },
+    "navy_gordura": {
+      "type": "number",
+      "title": "%GC por medidas (U.S. Navy)"
+    },
+    "navy_massa_gorda": {
+      "type": "number",
+      "title": "Massa gorda por medidas (kg)"
+    },
+    "navy_massa_magra": {
+      "type": "number",
+      "title": "Massa livre de gordura (kg)"
+    },
+    "observacoes_cliente": {
+      "type": "string",
+      "title": "Observa\u00e7\u00f5es do Cliente"
+    },
+    "notas_profissional": {
+      "type": "string",
+      "title": "Notas do Profissional"
+    }
+  },
+  "required": [
+    "cliente_id",
+    "data"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.coach": "{{user.data.coach_nome}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.coach": "{{user.data.coach_nome}}"
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.coach": "{{user.data.coach_nome}}"
+        }
+      ]
+    }
+  }
+}

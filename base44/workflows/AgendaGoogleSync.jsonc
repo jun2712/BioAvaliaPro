@@ -1,0 +1,41 @@
+{
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "agenda_google_sync",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "sincronizar_agenda": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "sincronizarAgendaGoogle",
+            "args": {
+              "data": "${ .trigger.data }"
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Sincronizar agenda",
+            "description": "Atualiza data e hora dos agendamentos"
+          }
+        }
+      }
+    ]
+  },
+  "description": "Reflete no app as altera\u00e7\u00f5es de data e hora feitas nos eventos do Google Calendar",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "connector",
+      "events": [
+        "events"
+      ],
+      "integration_type": "googlecalendar",
+      "resource_id": "primary"
+    }
+  },
+  "name": "Agenda Google Sync"
+}
