@@ -1,6 +1,6 @@
 # BioAvalia2 — Migration plan: Base44 → Supabase + Vercel
 
-Status: Phase 1 and the data migration are implemented — Supabase schema/RLS is applied to the live project, the compatibility data client and Supabase auth are in place, the Base44 SDK is removed from the client, the app builds, the three known users are created, and the CSVs are imported with the counts below. Backend Edge Functions are still pending.
+Status: Phase 1, the data migration and the backend function port are implemented — Supabase schema/RLS is applied to the live project, the compatibility data client and Supabase auth are in place, the Base44 SDK is removed from the client, the app builds, the three known users are created, the CSVs are imported with the counts below, and all 9 Base44 functions plus `admin-users` are deployed as Edge Functions. Google Calendar, AI, SMTP and the Vercel production deploy still need credentials/configuration.
 
 ### Live migration state (2026-10-28)
 
@@ -9,6 +9,10 @@ Status: Phase 1 and the data migration are implemented — Supabase schema/RLS i
 - Imported: 5,319 clients, 10,519 evaluations, 6 anamneses, 7 agendamentos, 2 protein calculations, 1 question set.
 - Verification: no discarded João client or dependent records; all 10,519 evaluations have coach “Jun Takakura”; all client `share_token` values are `NULL`; `C5135` resolves to Jun Takakura; the orphan “Teste Meta” protein calculation has `cliente_id = NULL`.
 - RLS smoke test: admin sees all rows, the Jesus account sees its 5,234 coach-name clients but no evaluations/anamneses, and anonymous access is denied. See the access decision below before go-live.
+- Edge Functions deployed: `getPublicReport`, `anamnesePublic`, `proteinaPublic`, `anamneseAnalise`, `criarEventoGoogle`, `reagendarEventoGoogle`, `sincronizarAgendaGoogle`, `sincronizarFuturosGoogle`, `statusGoogleAgenda`, `admin-users`. The three public functions have `verify_jwt = false`; the rest require a user JWT.
+- Remote smoke tests passed: public report whitelist, public protein/anamnese reads and writes, prospect creation, invalid-token rejection, authenticated Google “not connected” responses, AI not-configured 503, unauthenticated 401, and admin set-role/delete lifecycle. Temporary smoke rows/users were removed and the imported counts remain unchanged.
+- Access decision (2026-10-28): **do not grant Jesus clinical access for now.** His account keeps client visibility but no evaluations/anamneses. This is an accepted limitation, not a misconfiguration.
+- Not configured: Google Calendar secrets, AI provider key, custom SMTP, Vercel production environment/Auth URLs.
 
 ### Confirmed data decisions (2026-10-28)
 
@@ -428,50 +432,9 @@ The OTP path preserves the current UI. Configure custom SMTP (Resend/Brevo) beca
 
 ### 4.5 Functions adapter
 
-```js
-// Base44 function name -> { slug, action }
-const FUNCTIONS = {
-  getPublicReport: { slug: "public-report" },
-  anamnesePublic: { slug: "anamnese-public" },
-  proteinaPublic: { slug: "proteina-public" },
-  anamneseAnalise: { slug: "anamnese-analise" },
-  statusGoogleAgenda: { slug: "google-calendar", action: "status" },
-  criarEventoGoogle: { slug: "google-calendar", action: "create" },
-  reagendarEventoGoogle: { slug: "google-calendar", action: "reschedule" },
-  sincronizarAgendaGoogle: { slug: "google-calendar", action: "sync" },
-  sincronizarFuturosGoogle: { slug: "google-calendar", action: "sync-future" },
-};
+As built, the Edge Function slugs are identical to the Base44 names, so the existing call sites continue to use `db.functions.invoke("getPublicReport", ...)` etc. The adapter in `src/api/dataClient.js` calls `supabase.functions.invoke(name, { body })`, which adds the current session automatically. There is no function-name map or manual `fetch`.
 
-async function invokeEdgeFunction(name, body = {}) {
-  const target = FUNCTIONS[name];
-  if (!target) throw new Error(`Unknown function: ${name}`);
-  const { data: { session } } = await supabase.auth.getSession();
-  const url = new URL(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${target.slug}`,
-  );
-  if (target.action) url.searchParams.set("action", target.action);
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-    },
-    body: JSON.stringify(body),
-  });
-  const payload = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const error = new Error(payload.error || "Request failed");
-    error.response = { data: payload }; // current UI reads err.response.data.error
-    throw error;
-  }
-  return { data: payload };
-}
-```
-
-Alternative: keep the Edge Function slugs identical to the old Base44 names (if Supabase accepts that naming), so call sites do not need a map. The map above is safer and keeps the frontend names unchanged.
-
-Public functions (`public-report`, `anamnese-public`, `proteina-public`) must be deployed with `verify_jwt = false`; they authorize by token. Private functions verify the JWT and ownership.
+Public functions (`getPublicReport`, `anamnesePublic`, `proteinaPublic`) are deployed with `verify_jwt = false`; they authorize by token. Private functions verify the JWT and ownership through RLS. The `supabase/config.toml` file records these settings so `supabase functions deploy` applies them.
 
 ### 4.6 File-by-file changes
 
@@ -511,9 +474,9 @@ Specific changes beyond the rename:
 
 ## 5. Supabase backend functions
 
-Port the 9 Base44 functions to Supabase Edge Functions (Deno). They can keep the same request/response shapes, which means the frontend adapter only changes the URL.
+The 9 Base44 functions were ported to Supabase Edge Functions (Deno). The deployed names match the Base44 invocation names, so `src/api/dataClient.js` did not need per-function routing changes.
 
-Suggested layout:
+As-built layout:
 
 ```text
 supabase/
@@ -521,31 +484,35 @@ supabase/
   migrations/20261028000000_init.sql
   functions/
     _shared/cors.ts
-    _shared/auth.ts
+    _shared/auth.ts              # caller JWT + profile + service-role client
     _shared/proteina.ts          # ported from base44/shared/proteina.ts
-    _shared/googleCalendar.ts    # ported from base44/shared/googleCalendar.ts
-    public-report/index.ts
-    anamnese-public/index.ts
-    proteina-public/index.ts
-    anamnese-analise/index.ts
-    google-calendar/index.ts     # action routing: status/create/reschedule/sync/sync-future
-    admin-users/index.ts         # delete user, set role, optionally invite
+    _shared/googleCalendar.ts    # service account / OAuth + Calendar helpers
+    getPublicReport/index.ts
+    anamnesePublic/index.ts
+    proteinaPublic/index.ts
+    anamneseAnalise/index.ts
+    criarEventoGoogle/index.ts
+    reagendarEventoGoogle/index.ts
+    sincronizarAgendaGoogle/index.ts
+    sincronizarFuturosGoogle/index.ts
+    statusGoogleAgenda/index.ts
+    admin-users/index.ts
 ```
 
 ### 5.1 Function mapping
 
 | Base44 function | Edge Function | JWT | Notes |
 |---|---|---|---|
-| `getPublicReport` | `public-report` | no | Query by `share_token` with service role; whitelist public fields; never return `notas_profissional` or `created_by_id` |
-| `anamnesePublic` | `anamnese-public` | no | Token validation, answer save, protein calculation, prospect creation, `created_by_id` inherited from anamnesis owner |
-| `proteinaPublic` | `proteina-public` | no | Token validation, calculation, update client |
-| `anamneseAnalise` | `anamnese-analise` | yes | Verify owner/admin, call LLM API |
-| `statusGoogleAgenda` | `google-calendar?action=status` | yes | Owner/admin data via RLS |
-| `criarEventoGoogle` | `google-calendar?action=create` | yes | Verify client access |
-| `reagendarEventoGoogle` | `google-calendar?action=reschedule` | yes | Verify appointment access |
-| `sincronizarAgendaGoogle` | `google-calendar?action=sync` | yes | Sync token in `sync_states` |
-| `sincronizarFuturosGoogle` | `google-calendar?action=sync-future` | yes | Admin all, coach own |
-| — | `admin-users` | yes | `auth.admin.deleteUser`, admin check, role RPC |
+| `getPublicReport` | `getPublicReport` | no | Query by `share_token` with service role; whitelist public fields; never return `notas_profissional` or `created_by_id` |
+| `anamnesePublic` | `anamnesePublic` | no | Token validation, answer save, protein calculation, prospect creation, `created_by_id` inherited from anamnesis owner |
+| `proteinaPublic` | `proteinaPublic` | no | Token validation, calculation, update client |
+| `anamneseAnalise` | `anamneseAnalise` | yes | Verify owner/admin via RLS, call LLM API (Gemini/Groq/OpenRouter) |
+| `statusGoogleAgenda` | `statusGoogleAgenda` | yes | Owner/admin data via RLS |
+| `criarEventoGoogle` | `criarEventoGoogle` | yes | Verify client access |
+| `reagendarEventoGoogle` | `reagendarEventoGoogle` | yes | Verify appointment access |
+| `sincronizarAgendaGoogle` | `sincronizarAgendaGoogle` | yes | Sync token in `sync_states` |
+| `sincronizarFuturosGoogle` | `sincronizarFuturosGoogle` | yes | Admin all, coach own |
+| — | `admin-users` | yes | `auth.admin.deleteUser`, admin check, role update |
 
 Supabase Edge Functions have `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` available by default. Use:
 
@@ -558,9 +525,9 @@ Supabase Edge Functions have `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_
   ```
 - **Service-role client** only for public-token functions, `SyncState`, and admin operations.
 
-Public functions must validate inputs exactly as the current code does (token format, answer length, weight/age ranges, enum values) and should add basic rate limiting. Do not let a public function accept arbitrary table updates.
+Public functions validate inputs exactly as the current code does (token format, answer length, weight/age ranges, enum values). Do not let a public function accept arbitrary table updates. Distributed rate limiting is not implemented yet; tokens are 128-bit random values and must be treated as private links.
 
-CORS: return `Access-Control-Allow-Origin` for the app origin, allow `POST, OPTIONS`, and handle `OPTIONS`.
+CORS: the current shared helper returns `Access-Control-Allow-Origin: *`, allows `POST, OPTIONS`, and handles `OPTIONS`. Tighten this to the Vercel origin if the browser preflight policy should be restricted.
 
 ### 5.2 Admin user deletion
 
@@ -711,7 +678,7 @@ For a small app with one shared calendar, this is the most reliable free approac
    - `GOOGLE_PRIVATE_KEY`
    - `GOOGLE_CALENDAR_ID` (the shared calendar's ID, often the owner's email)
 5. Sign a JWT with the service account key and exchange it for an access token (`https://oauth2.googleapis.com/token`, grant `urn:ietf:params:oauth:grant-type:jwt-bearer`). Use `calendarId` instead of `primary`.
-6. Implement `google-calendar` actions using the existing `googleCalendar.ts` helpers (`intervaloEvento`, `dataHoraDoEvento`, `tituloEvento`, etc.).
+6. Implement the Google functions using the ported `_shared/googleCalendar.ts` helpers (`intervaloEvento`, `dataHoraDoEvento`, `tituloEvento`, token exchange, etc.). As built, the functions keep the Base44 names (`statusGoogleAgenda`, `criarEventoGoogle`, `reagendarEventoGoogle`, `sincronizarAgendaGoogle`, `sincronizarFuturosGoogle`).
 
 Advantages: no user consent screen, no refresh-token expiry, no Google app verification. Disadvantage: the owner must share the calendar once with the service account.
 
@@ -731,7 +698,7 @@ Current behavior: `Agenda.jsx` calls `sincronizarAgendaGoogle` on load; the Base
 
 - **Minimum:** keep the on-load sync; remove the workflow. Works for users who open the Agenda page.
 - **Better:** add a scheduled job:
-  - Supabase `pg_cron` + `pg_net` calls `google-calendar?action=sync-all` every 15–60 minutes; or
+  - Supabase `pg_cron` + `pg_net` calls a new admin-only `sync-all` action/function every 15–60 minutes; or
   - Vercel Cron (Hobby allows only daily cron jobs; Pro allows more).
 - **Real-time:** Google Calendar `watch` channels + public webhook. More setup: verify domain, renew channels, handle notifications. Defer unless required.
 
@@ -743,21 +710,21 @@ If reusing the same Google account/calendar, existing `google_event_id`/`google_
 
 ## 9. AI analysis function
 
-`base44/functions/anamneseAnalise/entry.ts` calls `base44.asServiceRole.integrations.Core.InvokeLLM({ prompt })`. Replace it with an HTTP call to an LLM provider:
+`base44/functions/anamneseAnalise/entry.ts` used `base44.asServiceRole.integrations.Core.InvokeLLM({ prompt })`. The Edge Function now calls an HTTP LLM provider directly:
 
-- **Google Gemini** free tier: `generativelanguage.googleapis.com` (good fit; check current model names/limits).
-- **Groq** free tier: fast Llama models.
-- **OpenRouter** free models: easiest provider fallback.
+- **Google Gemini** free tier: `generativelanguage.googleapis.com` (`GEMINI_API_KEY`).
+- **Groq** free tier: fast Llama models (`GROQ_API_KEY`).
+- **OpenRouter** free models: easiest provider fallback (`OPENROUTER_API_KEY`).
 
-Store the key in Supabase secrets, e.g. `GEMINI_API_KEY`, and add `AI_ENABLED=true`.
+Provider selection: `AI_PROVIDER` if set, otherwise the first configured key in the order Gemini → Groq → OpenRouter. `AI_ENABLED=false` disables the feature. Optional model overrides: `GEMINI_MODEL`, `GROQ_MODEL`, `OPENROUTER_MODEL`.
 
-Implementation notes:
+Implementation notes (as built):
 
-- Keep the existing prompt and WhatsApp-friendly formatting rules.
-- Use the anamnesis answers and last evaluation context exactly as today.
-- Verify the caller owns the anamnesis or is admin.
-- Return `{ recomendacao }` and the same error shape.
-- Add a timeout and a friendly error when no key is configured; hide/disable `AnaliseIA` when `AI_ENABLED` is false.
+- Kept the existing prompt and WhatsApp-friendly formatting rules.
+- Uses the anamnesis answers and last evaluation context exactly as today.
+- Verifies the caller owns the anamnesis or is admin via RLS.
+- Returns `{ recomendacao }`; missing configuration returns 503 with a friendly message.
+- 45-second timeout; provider errors return 502.
 - **Privacy:** anamnesis answers and body-composition data are sensitive health data. Free LLM tiers may use inputs to improve their products. Use a paid/enterprise tier with no-training terms, or keep AI disabled until this is reviewed. Update the privacy policy and obtain consent.
 
 ---
@@ -781,7 +748,11 @@ GOOGLE_SERVICE_ACCOUNT_EMAIL=...
 GOOGLE_PRIVATE_KEY=...
 GOOGLE_CALENDAR_ID=...
 GEMINI_API_KEY=...
+AI_ENABLED=true
 APP_URL=https://bioavalia.vercel.app
+# Optional AI alternatives: GROQ_API_KEY / OPENROUTER_API_KEY
+# Optional OAuth Calendar alternative:
+# GOOGLE_CLIENT_ID=... GOOGLE_CLIENT_SECRET=... GOOGLE_REFRESH_TOKEN=...
 ```
 
 If you choose Vercel API routes instead of Supabase Edge Functions, put server secrets in Vercel and never prefix them with `VITE_`.
@@ -792,13 +763,10 @@ If you choose Vercel API routes instead of Supabase Edge Functions, put server s
 supabase login
 supabase link --project-ref <ref>
 supabase db push                 # applies migrations
-supabase functions deploy public-report --no-verify-jwt
-supabase functions deploy anamnese-public --no-verify-jwt
-supabase functions deploy proteina-public --no-verify-jwt
-supabase functions deploy anamnese-analise
-supabase functions deploy google-calendar
-supabase functions deploy admin-users
+supabase functions deploy        # deploys all functions; config sets verify_jwt per function
 ```
+
+`supabase/config.toml` sets `verify_jwt = false` only for `getPublicReport`, `anamnesePublic` and `proteinaPublic`. All other functions require a user JWT.
 
 Configure:
 
@@ -827,6 +795,8 @@ Then:
 2. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to Production/Preview/Development.
 3. Deploy. Vercel serves the SPA; all dynamic work goes to Supabase.
 4. Add the custom domain and update Supabase Auth redirect URLs.
+
+Not done yet: the production Vercel deploy and the Auth URL switch. The repository is prepared (`vercel.json` is versioned), but no Vercel project/team credentials were available in this environment.
 
 ### 10.4 Local development
 

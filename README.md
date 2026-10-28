@@ -28,14 +28,20 @@ Concluído:
   - 7 agendamentos
   - 2 cálculos de proteína
   - 1 conjunto de anamnese
+- As 9 funções da Base44 foram portadas e publicadas como Supabase Edge Functions, além de `admin-users`:
+  - `getPublicReport`, `anamnesePublic` e `proteinaPublic` são públicas e validam o token; `verify_jwt = false`.
+  - `anamneseAnalise`, `criarEventoGoogle`, `reagendarEventoGoogle`, `sincronizarAgendaGoogle`, `sincronizarFuturosGoogle`, `statusGoogleAgenda` e `admin-users` exigem JWT.
+  - Smoke tests remotos passaram para relatório público (sem campos privados), respostas de anamnese/proteína, criação de prospecto, RLS, Google desconectado, IA não configurada e ciclo de vida de usuário/admin.
 
 Pendente:
 
-- Portar as Edge Functions de formulários públicos, relatório compartilhado, Google Calendar e análise por IA.
-- Configurar SMTP, URLs de redirecionamento, Google OAuth e os secrets das funções.
-- Resolver a decisão de acesso do coach “Jesus Ramaldes” (ver seção 5).
+- Configurar os secrets de Google Calendar e de IA. Até lá, a agenda retorna “não conectada” e a análise por IA retorna 503.
+- Configurar SMTP e as URLs de produção do Auth (ver §1.3).
+- Publicar na Vercel e atualizar a Site URL/Redirect URLs do Supabase.
+- Pedir que os usuários troquem as senhas temporárias e apagar `.import-credentials.local`.
+- Decisão de acesso do coach “Jesus Ramaldes”: **não liberar por enquanto** (ver §5).
 
-Enquanto as Edge Functions não forem portadas, as páginas públicas (`/relatorio/:token`, `/responder/:token`, `/proteina/:token`) e os recursos de agenda/IA não funcionarão.
+As páginas públicas (`/relatorio/:token`, `/responder/:token`, `/proteina/:token`) já funcionam com as funções publicadas. Os recursos de agenda/IA dependem somente dos secrets abaixo.
 
 ## Pré-requisitos
 
@@ -222,19 +228,55 @@ npm run lint      # ESLint
 6. O `vercel.json` já reescreve rotas da SPA para `index.html`.
 7. Atualize a **Site URL** e as **Redirect URLs** do Supabase com o domínio da Vercel.
 
+O deploy de produção ainda não foi executado; é necessário ter acesso ao projeto/equipe na Vercel e configurar as duas variáveis `VITE_*` acima.
+
 A Vercel Hobby é restrita a uso não comercial. Para um app com dados de saúde, avalie um plano compatível e os termos de tratamento de dados.
 
 ## 4. Edge Functions
 
-A função administrativa existente pode ser publicada com:
+As funções ficam em `supabase/functions/` e podem ser publicadas todas de uma vez:
 
 ```bash
-npx supabase@latest functions deploy admin-users
+set -a; source .env.import.local; set +a
+npx supabase@latest functions deploy --project-ref "$SUPABASE_PROJECT_REF"
 ```
 
-Ela usa `SUPABASE_SERVICE_ROLE_KEY` automaticamente no ambiente do Supabase e confirma que quem chama é administrador antes de remover uma conta.
+O `supabase/config.toml` marca apenas `getPublicReport`, `anamnesePublic` e `proteinaPublic` com `verify_jwt = false`. As demais exigem um JWT de usuário; `admin-users` confirma que o chamador é administrador antes de alterar papéis ou remover uma conta.
 
-As demais funções (relatório público, anamnese, proteína, IA e Google Calendar) ainda precisam ser portadas de `base44/functions/`.
+### 4.1 Google Calendar
+
+A integração usa uma única agenda compartilhada. O caminho recomendado é uma conta de serviço:
+
+1. Ative a Google Calendar API no Google Cloud.
+2. Crie uma conta de serviço e baixe a chave JSON.
+3. Compartilhe a agenda do proprietário (ou uma agenda dedicada “BioAvalia”) com o e-mail da conta de serviço, com permissão para **fazer alterações em eventos**.
+4. Configure os secrets no Supabase:
+
+```bash
+npx supabase secrets set \
+  GOOGLE_SERVICE_ACCOUNT_EMAIL="conta-de-servico@projeto.iam.gserviceaccount.com" \
+  GOOGLE_PRIVATE_KEY="$(cat chave.json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(JSON.parse(s).private_key))')" \
+  GOOGLE_CALENDAR_ID="agenda@grupo.com" \
+  --project-ref "$SUPABASE_PROJECT_REF"
+```
+
+Também é possível usar OAuth com refresh token: defina `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` e `GOOGLE_REFRESH_TOKEN`. Nesse caso, `GOOGLE_CALENDAR_ID` pode ficar como `primary`.
+
+Sem credenciais, `statusGoogleAgenda` retorna `conectado: false`; os agendamentos continuam funcionando apenas no app. Depois de conectar, use o botão de envio dos agendamentos futuros e abra a Agenda para sincronizar. `SyncState` não foi importado: a primeira sincronização começa com uma janela recente.
+
+### 4.2 Análise por IA
+
+Defina uma das chaves e mantenha a função habilitada:
+
+```bash
+npx supabase secrets set GEMINI_API_KEY="..." AI_ENABLED=true --project-ref "$SUPABASE_PROJECT_REF"
+```
+
+Alternativas: `GROQ_API_KEY` ou `OPENROUTER_API_KEY`. Opcionalmente, force o provedor com `AI_PROVIDER=gemini|groq|openrouter` e escolha o modelo com `GEMINI_MODEL`, `GROQ_MODEL` ou `OPENROUTER_MODEL`. Use `AI_ENABLED=false` para desativar a análise. Sem chave, a função responde 503 com uma mensagem amigável e a tela mostra o erro; o restante do app continua funcionando.
+
+### 4.3 Observações de segurança
+
+As funções públicas usam a service role somente depois de validar o token e os campos de entrada. O relatório público devolve uma lista fechada de campos e nunca inclui `notas_profissional`, IDs de proprietário ou metadados internos. Não há rate limiting distribuído nesta versão; os tokens têm 128 bits de entropia e devem ser tratados como links privados.
 
 ## 5. Segurança, acesso e LGPD
 
@@ -248,19 +290,19 @@ O app trata dados de saúde. Antes de usar em produção:
 - Apague `.env.import.local` e `.import-credentials.local` depois da migração.
 - O Supabase Free pode pausar por inatividade e tem garantias de backup limitadas; para produção, use um plano pago.
 
-### Decisão pendente: acesso do coach “Jesus Ramaldes”
+### Decisão atual: acesso do coach “Jesus Ramaldes”
 
-O export tem 5.234 clientes com `coach = "Jesus Ramaldes"`, mas todas as 10.519 avaliações importadas ficaram com `coach = "Jun Takakura"`, conforme a decisão de dados. O teste de RLS mostrou que a conta do Jesus:
+O export tem 5.234 clientes com `coach = "Jesus Ramaldes"`, mas todas as 10.519 avaliações importadas ficaram com `coach = "Jun Takakura"`, conforme a decisão de dados. Em 2026-10-28 foi decidido **não liberar o acesso clínico do Jesus por enquanto**. O teste de RLS mostra que a conta:
 
 - vê os 5.234 clientes;
 - vê **0 avaliações** e **0 anamneses**, porque esses registros são filtrados por `coach`/`created_by_id`, não pelo coach do cliente.
 
-Se essa conta deve acessar os prontuários desses clientes, será necessário decidir entre:
+Ou seja, o Jesus não consegue abrir prontuários, avaliações ou anamneses desses clientes. Se a decisão mudar, será necessário escolher entre:
 
 1. adicionar políticas RLS que permitam acesso aos registros filhos pelo `coach` do cliente; ou
 2. reatribuir avaliações/anamneses/agendamentos/cálculos para a conta do Jesus.
 
-Não altere o campo `coach` das avaliações sem revisar a decisão de dados registrada em `MIGRATION.md`.
+Não altere o campo `coach` das avaliações nem as políticas RLS sem revisar a decisão registrada em `MIGRATION.md`.
 
 ## Estrutura relevante
 
@@ -271,7 +313,7 @@ src/lib/AuthContext.jsx            # sessão + perfil
 scripts/bootstrap-users.mjs        # criação/mapeamento dos usuários
 scripts/import-csv.mjs             # importação idempotente dos CSVs
 supabase/migrations/               # schema, RLS, triggers e RPCs
-supabase/functions/admin-users/    # remoção de usuário (service role)
-base44/                            # referência legada para portar as funções
-MIGRATION.md                       # plano completo e decisões de dados
+supabase/functions/                # 10 Edge Functions + helpers compartilhados
+base44/                            # referência legada; não é mais executado pelo app
+MIGRATION.md                       # plano completo, decisões de dados e estado atual
 ```

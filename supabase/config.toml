@@ -37,3 +37,33 @@ double_confirm_changes = true
 
 [functions.admin-users]
 verify_jwt = true
+
+# Public token-based endpoints. The token itself authorizes access; these
+# functions never run with the caller's JWT and only use the service role after
+# validating the token and input.
+[functions.getPublicReport]
+verify_jwt = false
+
+[functions.anamnesePublic]
+verify_jwt = false
+
+[functions.proteinaPublic]
+verify_jwt = false
+
+[functions.anamneseAnalise]
+verify_jwt = true
+
+[functions.criarEventoGoogle]
+verify_jwt = true
+
+[functions.reagendarEventoGoogle]
+verify_jwt = true
+
+[functions.sincronizarAgendaGoogle]
+verify_jwt = true
+
+[functions.sincronizarFuturosGoogle]
+verify_jwt = true
+
+[functions.statusGoogleAgenda]
+verify_jwt = true
