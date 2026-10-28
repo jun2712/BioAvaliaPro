@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { db } from "@/api/dataClient";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -56,17 +56,17 @@ export default function UsuariosTable({ usuarios, clientes, avaliacoes, coachesS
     setSalvandoNome(true);
     try {
       const anterior = (editando.coach_nome || "").trim();
-      await base44.entities.User.update(editando.id, { coach_nome: limpo });
+      await db.entities.User.update(editando.id, { coach_nome: limpo });
       // Propaga o nome para os registros do próprio usuário e para os que
       // usavam o nome de Coach anterior (ex.: registros importados)
       const ops = [
-        base44.entities.Cliente.updateMany({ created_by_id: editando.id }, { $set: { coach: limpo } }),
-        base44.entities.Avaliacao.updateMany({ created_by_id: editando.id }, { $set: { coach: limpo } }),
+        db.entities.Cliente.updateMany({ created_by_id: editando.id }, { $set: { coach: limpo } }),
+        db.entities.Avaliacao.updateMany({ created_by_id: editando.id }, { $set: { coach: limpo } }),
       ];
       if (anterior && normalizarNomeCoach(anterior) !== normalizarNomeCoach(limpo)) {
         ops.push(
-          base44.entities.Cliente.updateMany({ coach: anterior }, { $set: { coach: limpo } }),
-          base44.entities.Avaliacao.updateMany({ coach: anterior }, { $set: { coach: limpo } }),
+          db.entities.Cliente.updateMany({ coach: anterior }, { $set: { coach: limpo } }),
+          db.entities.Avaliacao.updateMany({ coach: anterior }, { $set: { coach: limpo } }),
         );
       }
       await Promise.all(ops).catch(() => {});
@@ -78,12 +78,12 @@ export default function UsuariosTable({ usuarios, clientes, avaliacoes, coachesS
   };
 
   const alterarPapel = async (u) => {
-    await base44.entities.User.update(u.id, { role: u.role === "admin" ? "user" : "admin" });
+    await db.entities.User.update(u.id, { role: u.role === "admin" ? "user" : "admin" });
     onAtualizar();
   };
 
   const remover = async (u) => {
-    await base44.entities.User.delete(u.id);
+    await db.entities.User.delete(u.id);
     onAtualizar();
   };
 

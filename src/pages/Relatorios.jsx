@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
-import { base44 } from "@/api/base44Client";
+import { db } from "@/api/dataClient";
 import AppShell from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -39,8 +39,8 @@ export default function Relatorios() {
       setLoading(true);
       try {
         const [cls, avs] = await Promise.all([
-          base44.entities.Cliente.list("-updated_date", 500),
-          base44.entities.Avaliacao.list("-updated_date", 1000),
+          db.entities.Cliente.list("-updated_date", 500),
+          db.entities.Avaliacao.list("-updated_date", 1000),
         ]);
         setClientes(cls);
         setAvaliacoes(avs);

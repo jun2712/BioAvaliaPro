@@ -1,4 +1,4 @@
-import { base44 } from "@/api/base44Client";
+import { db } from "@/api/dataClient";
 
 // Compara nomes ignorando acentos, espaços extras e maiúsculas/minúsculas
 export function normalizarNomeCoach(s) {
@@ -10,21 +10,16 @@ export function normalizarNomeCoach(s) {
     .toLowerCase();
 }
 
-// Verifica se o nome de Coach já está em uso por outro usuário (coach_nome,
-// nome ou e-mail) ou nos registros de clientes — evita sobreposição de clientes.
+// Verifica se o nome de Coach já está em uso por outro usuário ou nos registros
+// de clientes. A função SQL é security definer e não expõe e-mails/contas.
 export async function nomeCoachEmUso(nome, excetoUserId = null) {
   const alvo = normalizarNomeCoach(nome);
   if (!alvo) return false;
-  try {
-    const usuarios = await base44.entities.User.list();
-    for (const u of usuarios) {
-      if (excetoUserId && u.id === excetoUserId) continue;
-      const nomes = [u.coach_nome, u.full_name, u.email].filter(Boolean).map(normalizarNomeCoach);
-      if (nomes.includes(alvo)) return true;
-    }
-  } catch {
-    // Usuários comuns não conseguem listar contas: segue para os registros
-  }
-  const page = await base44.entities.Cliente.list({ distinct: "coach" });
-  return (page.items || []).some((v) => v && normalizarNomeCoach(v) === alvo);
+
+  const { data, error } = await db.rpc("coach_name_taken", {
+    candidate: nome,
+    except_id: excetoUserId,
+  });
+  if (error) throw error;
+  return Boolean(data);
 }

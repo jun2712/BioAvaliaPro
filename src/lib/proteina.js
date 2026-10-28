@@ -1,5 +1,5 @@
 // Opções e rótulos do formulário público de meta proteica.
-// Fatores aplicados no backend (base44/shared/proteina.ts) — aqui só a apresentação.
+// Fatores aplicados no backend compartilhado — aqui só a apresentação.
 
 export const NIVEL_ATIVIDADE = [
   { value: "sedentario", label: "Sedentário", detalhe: "Sem treinos ou apenas caminhadas ocasionais" },

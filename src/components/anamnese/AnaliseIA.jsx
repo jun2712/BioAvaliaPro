@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { db } from "@/api/dataClient";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Sparkles, Loader2, Send } from "lucide-react";
@@ -15,7 +15,7 @@ export default function AnaliseIA({ anamnese }) {
     setAnalisando(true);
     setErro("");
     try {
-      const res = await base44.functions.invoke("anamneseAnalise", { anamnese_id: anamnese.id });
+      const res = await db.functions.invoke("anamneseAnalise", { anamnese_id: anamnese.id });
       setRecomendacao(res.data?.recomendacao || "");
     } catch (e) {
       setErro(e?.response?.data?.error || "Não foi possível gerar a análise. Tente novamente.");

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { db } from "@/api/dataClient";
 import AppShell from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -26,9 +26,9 @@ export default function Anamnese() {
     setLoading(true);
     try {
       const [lista, cls, cjs] = await Promise.all([
-        base44.entities.Anamnese.list("-created_date", 200),
-        base44.entities.Cliente.list("-updated_date", 500),
-        base44.entities.ConjuntoAnamnese.list("-created_date", 100),
+        db.entities.Anamnese.list("-created_date", 200),
+        db.entities.Cliente.list("-updated_date", 500),
+        db.entities.ConjuntoAnamnese.list("-created_date", 100),
       ]);
       setAnamneses(lista);
       setClientes(cls);
@@ -57,7 +57,7 @@ export default function Anamnese() {
   };
 
   const excluir = async (a) => {
-    await base44.entities.Anamnese.delete(a.id);
+    await db.entities.Anamnese.delete(a.id);
     carregar();
   };
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { db } from "@/api/dataClient";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { nomeCoachEmUso } from "@/lib/coach";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ export default function CoachPrompt() {
   const [userId, setUserId] = useState(null);
 
   useEffect(() => {
-    base44.auth.me()
+    db.auth.me()
       .then((u) => {
         setUserId(u?.id || null);
         if (!u?.coach_nome && localStorage.getItem(ADIAR) !== "1") setOpen(true);
@@ -36,12 +36,12 @@ export default function CoachPrompt() {
     }
     setSalvando(true);
     try {
-      await base44.auth.updateMe({ coach_nome: limpo });
+      await db.auth.updateMe({ coach_nome: limpo });
       // Propaga o nome para os registros já existentes do coach
       if (userId) {
         await Promise.all([
-          base44.entities.Cliente.updateMany({ created_by_id: userId }, { $set: { coach: limpo } }),
-          base44.entities.Avaliacao.updateMany({ created_by_id: userId }, { $set: { coach: limpo } }),
+          db.entities.Cliente.updateMany({ created_by_id: userId }, { $set: { coach: limpo } }),
+          db.entities.Avaliacao.updateMany({ created_by_id: userId }, { $set: { coach: limpo } }),
         ]).catch(() => {});
       }
       localStorage.removeItem(ADIAR);

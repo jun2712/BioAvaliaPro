@@ -1,6 +1,7 @@
-import React, { useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { db } from "@/api/dataClient";
+import { supabase } from "@/api/supabaseClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,13 +9,48 @@ import { Lock, Loader2, AlertTriangle } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 
 export default function ResetPassword() {
-  const [searchParams] = useSearchParams();
-  const resetToken = searchParams.get("token");
-
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  // null = still checking the recovery link, true = session available,
+  // false = no recovery session.
+  const [sessionReady, setSessionReady] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+
+    const finishCheck = (value) => {
+      if (active) setSessionReady(value);
+    };
+
+    supabase.auth.getSession().then(({ data, error: sessionError }) => {
+      if (sessionError) {
+        finishCheck(false);
+        return;
+      }
+      if (data.session) finishCheck(true);
+    });
+
+    // Supabase processes the recovery token in the URL asynchronously and
+    // emits PASSWORD_RECOVERY/SIGNED_IN. Give it a moment before showing the
+    // invalid-link message.
+    const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN" || session) {
+        finishCheck(true);
+      }
+    });
+
+    const timeout = setTimeout(() => {
+      setSessionReady((current) => (current === null ? false : current));
+    }, 2500);
+
+    return () => {
+      active = false;
+      clearTimeout(timeout);
+      subscription.subscription.unsubscribe();
+    };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -25,7 +61,9 @@ export default function ResetPassword() {
     }
     setLoading(true);
     try {
-      await base44.auth.resetPassword({ resetToken, newPassword });
+      await db.auth.resetPassword({ newPassword });
+      // End the recovery session so the user signs in with the new password.
+      await db.auth.logout(false).catch(() => {});
       window.location.href = "/login";
     } catch (err) {
       setError(err.message || "Failed to reset password");
@@ -34,12 +72,26 @@ export default function ResetPassword() {
     }
   };
 
-  if (!resetToken) {
+  if (sessionReady === null) {
+    return (
+      <AuthLayout
+        icon={Lock}
+        title="Checking reset link"
+        subtitle="Validating your password reset link"
+      >
+        <div className="flex justify-center py-4">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
+      </AuthLayout>
+    );
+  }
+
+  if (!sessionReady) {
     return (
       <AuthLayout
         icon={AlertTriangle}
         title="Invalid reset link"
-        subtitle="This password reset link is missing or invalid"
+        subtitle="This password reset link is missing, invalid, or expired"
         footer={
           <Link to="/forgot-password" className="text-primary font-medium hover:underline">
             Request a new link

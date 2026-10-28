@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { db } from "@/api/dataClient";
 import AppShell from "@/components/AppShell";
 import UsuariosTable from "@/components/admin/UsuariosTable";
 import GoogleCompartilhadoCard from "@/components/admin/GoogleCompartilhadoCard";
@@ -22,7 +22,7 @@ export default function Administracao() {
 
   const carregar = async () => {
     const [users, cls, avs] = await Promise.all([
-      base44.entities.User.list("-created_date", 500),
+      db.entities.User.list("-created_date", 500),
       carregarTudo("Cliente"),
       carregarTudo("Avaliacao"),
     ]);
@@ -40,7 +40,7 @@ export default function Administracao() {
   useEffect(() => {
     (async () => {
       try {
-        const me = await base44.auth.me();
+        const me = await db.auth.me();
         setMeuId(me?.id || null);
         if (me?.role !== "admin") {
           setIsAdmin(false);

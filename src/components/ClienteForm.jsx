@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { db } from "@/api/dataClient";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,11 +45,11 @@ export default function ClienteForm({ open, onClose, onSaved, cliente = null, cl
     };
     try {
       if (cliente) {
-        await base44.entities.Cliente.update(cliente.id, payload);
+        await db.entities.Cliente.update(cliente.id, payload);
       } else {
-        const user = await base44.auth.me().catch(() => null);
+        const user = await db.auth.me().catch(() => null);
         const coach = user?.coach_nome || user?.email || null;
-        await base44.entities.Cliente.create({ ...payload, codigo: await codigoUnico(), coach });
+        await db.entities.Cliente.create({ ...payload, codigo: await codigoUnico(), coach });
       }
       onSaved?.();
       onClose?.();

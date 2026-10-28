@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { db } from "@/api/dataClient";
 import { Card } from "@/components/ui/card";
 import { Loader2, Beef } from "lucide-react";
 import ProteinaForm from "@/components/proteina/ProteinaForm";
@@ -16,7 +16,7 @@ export default function CalculoProteinaPublica() {
 
   useEffect(() => {
     let ativo = true;
-    base44.functions
+    db.functions
       .invoke("proteinaPublic", { token })
       .then((res) => { if (ativo) setDados(res.data); })
       .catch(() => { if (ativo) setErro(true); });
@@ -26,7 +26,7 @@ export default function CalculoProteinaPublica() {
   const enviar = async (respostas) => {
     setEnviando(true);
     try {
-      const res = await base44.functions.invoke("proteinaPublic", { token, acao: "responder", respostas });
+      const res = await db.functions.invoke("proteinaPublic", { token, acao: "responder", respostas });
       setResultado(res.data.resultado);
     } finally {
       setEnviando(false);

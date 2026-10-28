@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { db } from "@/api/dataClient";
 import ReportContent from "@/components/ReportContent";
 import { Card } from "@/components/ui/card";
 import { Activity, Loader2 } from "lucide-react";
@@ -12,7 +12,7 @@ export default function RelatorioPublico() {
 
   useEffect(() => {
     let ativo = true;
-    base44.functions
+    db.functions
       .invoke("getPublicReport", { token })
       .then((res) => { if (ativo) setDados(res.data); })
       .catch(() => { if (ativo) setErro(true); });

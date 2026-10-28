@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { db } from "@/api/dataClient";
 import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,7 +37,7 @@ export default function AppShell({ title, subtitle, actions, children }) {
   // Encerra a sessão e volta para a tela de login (permite trocar de conta)
   const sair = async () => {
     setSaindo(true);
-    await base44.auth.logout();
+    await db.auth.logout();
   };
 
   return (

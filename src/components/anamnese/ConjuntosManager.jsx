@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { db } from "@/api/dataClient";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +21,7 @@ export default function ConjuntosManager({ open, onClose, onSaved }) {
   const carregar = async () => {
     setLoading(true);
     try {
-      setConjuntos(await base44.entities.ConjuntoAnamnese.list("-created_date", 100));
+      setConjuntos(await db.entities.ConjuntoAnamnese.list("-created_date", 100));
     } finally {
       setLoading(false);
     }
@@ -48,8 +48,8 @@ export default function ConjuntosManager({ open, onClose, onSaved }) {
     setSalvando(true);
     try {
       const payload = { nome: nome.trim(), codigos: [...codigos] };
-      if (id) await base44.entities.ConjuntoAnamnese.update(id, payload);
-      else await base44.entities.ConjuntoAnamnese.create(payload);
+      if (id) await db.entities.ConjuntoAnamnese.update(id, payload);
+      else await db.entities.ConjuntoAnamnese.create(payload);
       setEditando(null);
       setErro("");
       await carregar();
@@ -60,7 +60,7 @@ export default function ConjuntosManager({ open, onClose, onSaved }) {
   };
 
   const excluir = async (c) => {
-    await base44.entities.ConjuntoAnamnese.delete(c.id);
+    await db.entities.ConjuntoAnamnese.delete(c.id);
     await carregar();
     onSaved?.();
   };

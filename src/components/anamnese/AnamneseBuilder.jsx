@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { db } from "@/api/dataClient";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +32,7 @@ const vazio = () => ({
 // Dados que já existem na ficha do cliente e podem ir pré-preenchidos (e editáveis)
 const prefillDoCliente = async (cliente) => {
   const idade = calcularIdade(cliente.data_nascimento);
-  const pagina = await base44.entities.Avaliacao
+  const pagina = await db.entities.Avaliacao
     .filter({ cliente_id: cliente.id }, "-data", 1)
     .catch(() => ({ items: [] }));
   const peso = pagina.items?.[0]?.peso ?? null;
@@ -89,7 +89,7 @@ export default function AnamneseBuilder({ open, onClose, onSaved, clientes, conj
         }));
 
       const token = gerarToken();
-      await base44.entities.Anamnese.create({
+      await db.entities.Anamnese.create({
         cliente_id: modoProspecto ? null : cli.id,
         nome: nomeDestino,
         whatsapp: fone || null,

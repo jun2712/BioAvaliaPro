@@ -1,4 +1,4 @@
-import { base44 } from "@/api/base44Client";
+import { db } from "@/api/dataClient";
 import { carregarTudo } from "@/lib/carregarTudo";
 import { downloadCSV, normalizeKey, parseCSV } from "@/lib/csv";
 
@@ -93,7 +93,7 @@ export async function importarRespostasCSV(texto) {
       return novas.has(codigo) ? { ...p, resposta: novas.get(codigo) } : p;
     });
     const completa = perguntas.length > 0 && perguntas.every((p) => String(p.resposta || "").trim());
-    await base44.entities.Anamnese.update(anamnese.id, {
+    await db.entities.Anamnese.update(anamnese.id, {
       perguntas,
       status: completa ? "respondida" : anamnese.status,
       respondida_em: completa ? (anamnese.respondida_em || new Date().toISOString()) : anamnese.respondida_em || null,

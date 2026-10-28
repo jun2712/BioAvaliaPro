@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { db } from "@/api/dataClient";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +28,7 @@ export default function ReagendarDialog({ open, onClose, agendamento, onSaved })
     setSaving(true);
     setAviso("");
     try {
-      const res = await base44.functions.invoke("reagendarEventoGoogle", {
+      const res = await db.functions.invoke("reagendarEventoGoogle", {
         agendamento_id: agendamento.id,
         data,
         hora,

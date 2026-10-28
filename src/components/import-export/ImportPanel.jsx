@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { db } from "@/api/dataClient";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -295,7 +295,7 @@ export default function ImportPanel() {
     });
     if (dados.prontos.length) {
       // Clientes sem coach na planilha ficam vinculados a quem importa
-      const user = await base44.auth.me().catch(() => null);
+      const user = await db.auth.me().catch(() => null);
       const coachAtual = user?.coach_nome || user?.email || null;
       if (coachAtual) dados.prontos.forEach((r) => { if (!r.coach) r.coach = coachAtual; });
       await emLotes(dados.prontos, async (lote) => {
@@ -303,14 +303,14 @@ export default function ImportPanel() {
         // importação anterior interrompida) não são criados outra vez.
         const existentes = new Set();
         for (let i = 0; i < lote.length; i += 100) {
-          const page = await comLimite(() => base44.entities.Cliente.filter(
+          const page = await comLimite(() => db.entities.Cliente.filter(
             { codigo: { $in: lote.slice(i, i + 100).map((r) => r.codigo) } },
             { limit: 200 },
           ));
           page.items.forEach((c) => existentes.add(String(c.codigo || "").trim().toUpperCase()));
         }
         const novos = lote.filter((r) => !existentes.has(r.codigo));
-        if (novos.length) await base44.entities.Cliente.bulkCreate(novos);
+        if (novos.length) await db.entities.Cliente.bulkCreate(novos);
         criados += novos.length;
       }, setFeitas);
     }
@@ -324,7 +324,7 @@ export default function ImportPanel() {
         delete campos.codigo; // o ID é a chave de correspondência: nunca é reescrito
         return { id: c.existente.id, ...campos };
       });
-    await emLotes(updates, (lote) => base44.entities.Cliente.bulkUpdate(lote), () => {});
+    await emLotes(updates, (lote) => db.entities.Cliente.bulkUpdate(lote), () => {});
     atualizados = updates.length;
     mantidos = dados.conflitos.length - atualizados;
     // Códigos já existentes na base entram como "idênticos já no app"
@@ -341,7 +341,7 @@ export default function ImportPanel() {
       const { _cliente_codigo, _cliente_nome, _cliente, ...resto } = r;
       return { ...resto, cliente_id: _cliente.id };
     });
-    await emLotes(prontos, (lote) => base44.entities.Avaliacao.bulkCreate(lote), setFeitas);
+    await emLotes(prontos, (lote) => db.entities.Avaliacao.bulkCreate(lote), setFeitas);
     const substituicoes = dados.conflitos
       .map((c, i) => (escolhas[i] === "substituir" ? c : null))
       .filter(Boolean);
@@ -354,14 +354,14 @@ export default function ImportPanel() {
         delete campos._cliente;
         return { id: c.existente.id, ...campos };
       });
-    await emLotes(updates, (lote) => base44.entities.Avaliacao.bulkUpdate(lote), () => {});
+    await emLotes(updates, (lote) => db.entities.Avaliacao.bulkUpdate(lote), () => {});
     const atualizados = updates.length;
     const mantidos = dados.conflitos.length - atualizados;
     return { criados: prontos.length, atualizados, mantidos, identicos: dados.identicos };
   };
 
   const executarAnamneses = async (dados, setFeitas) => {
-    await emLotes(dados.prontos, (lote) => base44.entities.Anamnese.bulkCreate(lote), setFeitas);
+    await emLotes(dados.prontos, (lote) => db.entities.Anamnese.bulkCreate(lote), setFeitas);
     return {
       criados: dados.prontos.length,
       identicos: dados.identicos,

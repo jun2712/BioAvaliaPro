@@ -1,4 +1,4 @@
-import { base44 } from "@/api/base44Client";
+import { db } from "@/api/dataClient";
 import { carregarTudo } from "@/lib/carregarTudo";
 
 // ID interno do cliente, sequencial e legível (ex.: C0001).
@@ -57,7 +57,7 @@ export async function garantirCodigos(clientes) {
     updates.push({ id: c.id, codigo });
   }
   for (let i = 0; i < updates.length; i += 500) {
-    await base44.entities.Cliente.bulkUpdate(updates.slice(i, i + 500));
+    await db.entities.Cliente.bulkUpdate(updates.slice(i, i + 500));
   }
   updates.forEach((u) => {
     const c = clientes.find((x) => x.id === u.id);

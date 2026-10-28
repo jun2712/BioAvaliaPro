@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { db } from "@/api/dataClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
 import { toast } from "@/components/ui/use-toast";
 import { safeReturnTo } from "@/lib/authReturnTo";
+import { nomeCoachEmUso } from "@/lib/coach";
 
 export default function Register() {
   const [email, setEmail] = useState("");
@@ -44,7 +45,25 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      await base44.auth.register({ email, password });
+      if (await nomeCoachEmUso(nomeCoach.trim())) {
+        setError("Este nome de Coach já está em uso. Escolha um nome diferente.");
+        return;
+      }
+
+      const result = await db.auth.register({
+        email,
+        password,
+        coachNome: nomeCoach.trim(),
+      });
+
+      // If "Confirm email" is disabled in Supabase, signUp already returns a
+      // session. Otherwise the existing six-digit OTP screen is used.
+      if (result?.session) {
+        await db.auth.updateMe({ coach_nome: nomeCoach.trim() }).catch(() => {});
+        window.location.href = safeReturnTo();
+        return;
+      }
+
       setShowOtp(true);
     } catch (err) {
       setError(err.message || "Registration failed");
@@ -57,12 +76,9 @@ export default function Register() {
     setError("");
     setLoading(true);
     try {
-      const result = await base44.auth.verifyOtp({ email, otpCode });
-      if (result?.access_token) {
-        base44.auth.setToken(result.access_token);
-      }
+      await db.auth.verifyOtp({ email, otpCode });
       // Nome de Coach informado no cadastro identifica clientes e avaliações do profissional
-      await base44.auth.updateMe({ coach_nome: nomeCoach.trim() }).catch(() => {});
+      await db.auth.updateMe({ coach_nome: nomeCoach.trim() }).catch(() => {});
       // E-mail confirmado: entra direto no app (a agenda Google é compartilhada)
       window.location.href = safeReturnTo();
     } catch (err) {
@@ -75,7 +91,7 @@ export default function Register() {
   const handleResend = async () => {
     setError("");
     try {
-      await base44.auth.resendOtp(email);
+      await db.auth.resendOtp(email);
       toast({
         title: "Code sent",
         description: "Check your email for the new code.",
@@ -85,9 +101,14 @@ export default function Register() {
     }
   };
 
-  const handleGoogle = () => {
+  const handleGoogle = async () => {
     if (!aceiteObrigatorio()) return;
-    base44.auth.loginWithProvider("google", safeReturnTo());
+    setError("");
+    try {
+      await db.auth.loginWithProvider("google", safeReturnTo());
+    } catch (err) {
+      setError(err.message || "Could not start Google login");
+    }
   };
 
   if (showOtp) {

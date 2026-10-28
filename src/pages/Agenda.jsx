@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { db } from "@/api/dataClient";
 import AppShell from "@/components/AppShell";
 import CalendarioTresSemanas from "@/components/agenda/CalendarioTresSemanas";
 import ListaDoDia from "@/components/agenda/ListaDoDia";
@@ -36,8 +36,8 @@ export default function Agenda() {
 
   const carregar = async () => {
     const [cls, ags] = await Promise.all([
-      base44.entities.Cliente.list("-updated_date", 500),
-      base44.entities.Agendamento.list("data", 500),
+      db.entities.Cliente.list("-updated_date", 500),
+      db.entities.Agendamento.list("data", 500),
     ]);
     setClientes(cls);
     setAgendamentos(ags);
@@ -52,7 +52,7 @@ export default function Agenda() {
       }
       // Traz para o app as mudanças de data/hora feitas direto no Google Calendar
       try {
-        const res = await base44.functions.invoke("sincronizarAgendaGoogle", {});
+        const res = await db.functions.invoke("sincronizarAgendaGoogle", {});
         const mudou =
           (res.data?.atualizados || 0) + (res.data?.cancelados || 0) + (res.data?.vinculados || 0);
         if (mudou > 0) await carregar();

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { db } from "@/api/dataClient";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { CalendarPlus, Loader2, AlertCircle } from "lucide-react";
@@ -14,7 +14,7 @@ export default function SincronizarFuturosDialog({ open, quantidade = 0, onClose
     setEnviando(true);
     setErro("");
     try {
-      const res = await base44.functions.invoke("sincronizarFuturosGoogle", {});
+      const res = await db.functions.invoke("sincronizarFuturosGoogle", {});
       setResultado(res.data || {});
       onFeito?.();
     } catch (err) {

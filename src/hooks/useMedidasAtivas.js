@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { db } from "@/api/dataClient";
 import { MEDIDAS_PERIOMETRIA } from "@/lib/medidas";
 
 const TODAS = MEDIDAS_PERIOMETRIA.map((m) => m.name);
@@ -11,7 +11,7 @@ export default function useMedidasAtivas() {
 
   useEffect(() => {
     let ativo = true;
-    base44.auth.me()
+    db.auth.me()
       .then((u) => {
         if (!ativo) return;
         const salvas = Array.isArray(u?.medidas_ativas) && u.medidas_ativas.length ? u.medidas_ativas : null;

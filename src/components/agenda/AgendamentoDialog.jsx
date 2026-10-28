@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { db } from "@/api/dataClient";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,8 +47,8 @@ export default function AgendamentoDialog({ open, onClose, cliente }) {
     }
     let ativo = true;
     (async () => {
-      const me = await base44.auth.me().catch(() => null);
-      const page = await base44.entities.Agendamento.filter(
+      const me = await db.auth.me().catch(() => null);
+      const page = await db.entities.Agendamento.filter(
         { data, created_by_id: me?.id },
         { limit: 100 }
       ).catch(() => ({ items: [] }));
@@ -60,7 +60,7 @@ export default function AgendamentoDialog({ open, onClose, cliente }) {
         setNomes({});
         return;
       }
-      const cls = await base44.entities.Cliente.filter({ id: { $in: ids } }, { limit: 100 }).catch(
+      const cls = await db.entities.Cliente.filter({ id: { $in: ids } }, { limit: 100 }).catch(
         () => ({ items: [] })
       );
       if (!ativo) return;
@@ -75,13 +75,13 @@ export default function AgendamentoDialog({ open, onClose, cliente }) {
   // Sem evento criado, o agendamento permanece salvo no app e o erro fica na tela.
   const enviarParaGoogle = async (ag) => {
     try {
-      const res = await base44.functions.invoke("criarEventoGoogle", {
+      const res = await db.functions.invoke("criarEventoGoogle", {
         cliente_id: cliente.id,
         data: ag.data,
         hora: ag.hora,
       });
       if (res.data?.event_id) {
-        await base44.entities.Agendamento.update(ag.id, {
+        await db.entities.Agendamento.update(ag.id, {
           google_event_id: res.data.event_id,
           google_link: res.data.html_link,
         });
@@ -110,7 +110,7 @@ export default function AgendamentoDialog({ open, onClose, cliente }) {
     setSaving(true);
     setAviso("");
     try {
-      const ag = await base44.entities.Agendamento.create({
+      const ag = await db.entities.Agendamento.create({
         cliente_id: cliente.id,
         data,
         hora,
@@ -119,7 +119,7 @@ export default function AgendamentoDialog({ open, onClose, cliente }) {
       });
       // O retorno agendado passa a ser a próxima avaliação do cliente no painel
       if (tipo === "avaliacao" || tipo === "retorno") {
-        await base44.entities.Cliente.update(cliente.id, { proxima_avaliacao: data });
+        await db.entities.Cliente.update(cliente.id, { proxima_avaliacao: data });
       }
       setConflitos([]);
       await enviarParaGoogle(ag);

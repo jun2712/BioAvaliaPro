@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { db } from "@/api/dataClient";
 import AppShell from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -25,7 +25,7 @@ export default function Configuracoes() {
   const [userId, setUserId] = useState(null);
 
   useEffect(() => {
-    base44.auth.me().then((u) => {
+    db.auth.me().then((u) => {
       setCoachNome(u?.coach_nome || "");
       setCoachNomeOriginal(u?.coach_nome || "");
       setUserId(u?.id || null);
@@ -45,7 +45,7 @@ export default function Configuracoes() {
   const salvar = async () => {
     setSalvando(true);
     try {
-      await base44.auth.updateMe({ medidas_ativas: selecionadas, mostrar_navy: mostrarNavy });
+      await db.auth.updateMe({ medidas_ativas: selecionadas, mostrar_navy: mostrarNavy });
       setSalvo(true);
     } finally {
       setSalvando(false);
@@ -63,18 +63,18 @@ export default function Configuracoes() {
     setSalvandoCoach(true);
     try {
       const anterior = (coachNomeOriginal || "").trim();
-      await base44.auth.updateMe({ coach_nome: limpo });
+      await db.auth.updateMe({ coach_nome: limpo });
       // Propaga o nome para os registros já existentes do coach
       if (userId) {
         const ops = [
-          base44.entities.Cliente.updateMany({ created_by_id: userId }, { $set: { coach: limpo } }),
-          base44.entities.Avaliacao.updateMany({ created_by_id: userId }, { $set: { coach: limpo } }),
+          db.entities.Cliente.updateMany({ created_by_id: userId }, { $set: { coach: limpo } }),
+          db.entities.Avaliacao.updateMany({ created_by_id: userId }, { $set: { coach: limpo } }),
         ];
         // Registros vinculados pelo nome antigo (ex.: importados) seguem o coach
         if (anterior && normalizarNomeCoach(anterior) !== normalizarNomeCoach(limpo)) {
           ops.push(
-            base44.entities.Cliente.updateMany({ coach: anterior }, { $set: { coach: limpo } }),
-            base44.entities.Avaliacao.updateMany({ coach: anterior }, { $set: { coach: limpo } }),
+            db.entities.Cliente.updateMany({ coach: anterior }, { $set: { coach: limpo } }),
+            db.entities.Avaliacao.updateMany({ coach: anterior }, { $set: { coach: limpo } }),
           );
         }
         await Promise.all(ops).catch(() => {});

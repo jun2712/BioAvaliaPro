@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { AlertTriangle, Loader2, RefreshCw } from "lucide-react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 import { statusGoogleCalendar } from "@/lib/googleAgenda";
 import SincronizarFuturosDialog from "@/components/conta/SincronizarFuturosDialog";
 

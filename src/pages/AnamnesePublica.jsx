@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { db } from "@/api/dataClient";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +22,7 @@ export default function AnamnesePublica() {
 
   useEffect(() => {
     let ativo = true;
-    base44.functions
+    db.functions
       .invoke("anamnesePublic", { token })
       .then((res) => {
         if (!ativo) return;
@@ -49,7 +49,7 @@ export default function AnamnesePublica() {
     if (respondidas === 0) return;
     setEnviando(true);
     try {
-      const res = await base44.functions.invoke("anamnesePublic", { token, acao: "responder", respostas });
+      const res = await db.functions.invoke("anamnesePublic", { token, acao: "responder", respostas });
       setResultado(res.data?.meta_proteica || null);
       setEnviado(true);
     } finally {

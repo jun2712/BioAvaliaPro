@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { db } from "@/api/dataClient";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Beef, Loader2, MessageCircle } from "lucide-react";
@@ -23,7 +23,7 @@ export default function ProteinaCard({ cliente }) {
 
   useEffect(() => {
     let ativo = true;
-    base44.entities.CalculoProteina
+    db.entities.CalculoProteina
       .filter({ cliente_id: cliente.id }, { sort: "-created_date", limit: 1 })
       .then((pagina) => { if (ativo) setRegistro(pagina.items?.[0] || null); })
       .finally(() => { if (ativo) setCarregando(false); });
@@ -38,7 +38,7 @@ export default function ProteinaCard({ cliente }) {
     try {
       let atual = registro;
       if (!atual) {
-        atual = await base44.entities.CalculoProteina.create({
+        atual = await db.entities.CalculoProteina.create({
           cliente_id: cliente.id,
           nome: cliente.nome,
           whatsapp: cliente.whatsapp || null,

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { db } from "@/api/dataClient";
 import AppShell from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -33,12 +33,12 @@ export default function AvaliacaoForm() {
       setLoading(true);
       try {
         if (id) {
-          const av = await base44.entities.Avaliacao.get(id);
+          const av = await db.entities.Avaliacao.get(id);
           setValues({ ...av });
-          if (av.cliente_id) setCliente(await base44.entities.Cliente.get(av.cliente_id));
+          if (av.cliente_id) setCliente(await db.entities.Cliente.get(av.cliente_id));
         } else if (clienteId) {
-          const c = await base44.entities.Cliente.get(clienteId);
-          const avs = await base44.entities.Avaliacao.filter({ cliente_id: clienteId }, "data", 200);
+          const c = await db.entities.Cliente.get(clienteId);
+          const avs = await db.entities.Avaliacao.filter({ cliente_id: clienteId }, "data", 200);
           const ultima = avs[avs.length - 1];
           setCliente(c);
           // Altura de referência: a da avaliação mais recente; sem avaliações, a do cadastro
@@ -76,11 +76,11 @@ export default function AvaliacaoForm() {
       };
       let savedId = id;
       if (id) {
-        await base44.entities.Avaliacao.update(id, payload);
+        await db.entities.Avaliacao.update(id, payload);
       } else {
-        const user = await base44.auth.me().catch(() => null);
+        const user = await db.auth.me().catch(() => null);
         const coach = user?.coach_nome || user?.email || null;
-        const created = await base44.entities.Avaliacao.create({ ...payload, coach });
+        const created = await db.entities.Avaliacao.create({ ...payload, coach });
         savedId = created.id;
       }
       // A altura lançada na avaliação passa a ser a referência do cadastro
@@ -93,7 +93,7 @@ export default function AvaliacaoForm() {
         ajustes.proxima_avaliacao = null;
       }
       if (cliente && Object.keys(ajustes).length > 0) {
-        await base44.entities.Cliente.update(cliente.id, ajustes);
+        await db.entities.Cliente.update(cliente.id, ajustes);
       }
       navigate(`/cliente/${payload.cliente_id}`);
     } finally {

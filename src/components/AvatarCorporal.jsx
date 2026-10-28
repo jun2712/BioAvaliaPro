@@ -3,8 +3,8 @@ import { getAvatarNivel, AVATAR_LABELS } from "@/lib/bioRefs";
 
 // Escala de avatares: tira com 8 figuras por sexo, nível atual destacado.
 const IMAGENS = {
-  Feminino: "https://media.base44.com/images/public/6ab06f9fad8e8449fc47fdc9/5f57b9790_generated_image.png",
-  Masculino: "https://media.base44.com/images/public/6ab06f9fad8e8449fc47fdc9/344aebd6d_generated_image.png",
+  Feminino: "/avatars/feminino.jpg",
+  Masculino: "/avatars/masculino.jpg",
 };
 
 export default function AvatarCorporal({ cliente, avaliacao, imc }) {

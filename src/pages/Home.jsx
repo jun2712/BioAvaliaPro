@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { useNavigate, useLocation } from "react-router-dom";
 import AppShell from "@/components/AppShell";
 import ClienteForm from "@/components/ClienteForm";
 import { Button } from "@/components/ui/button";
@@ -50,17 +49,7 @@ export default function Home() {
   };
 
   useEffect(() => {
-    (async () => {
-      // Conversão única: alturas cadastradas em metros passam a centímetros
-      if (localStorage.getItem("bioavalia_altura_cm") !== "1") {
-        try {
-          await base44.entities.Cliente.updateMany({ altura: { $lt: 3 } }, { $mul: { altura: 100 } });
-        } finally {
-          localStorage.setItem("bioavalia_altura_cm", "1");
-        }
-      }
-      carregar();
-    })();
+    carregar();
   }, []);
 
   // Nova busca ou filtro sempre recomeça do primeiro lote de resultados

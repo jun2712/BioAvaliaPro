@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { db } from "@/api/dataClient";
 import AppShell from "@/components/AppShell";
 import ClienteForm from "@/components/ClienteForm";
 import ReportContent from "@/components/ReportContent";
@@ -31,16 +31,16 @@ export default function ClienteDetail() {
 
   // Visibilidade das medidas U.S. Navy definida em Configurações
   useEffect(() => {
-    base44.auth.me().then((u) => setMostrarNavy(u?.mostrar_navy !== false)).catch(() => {});
+    db.auth.me().then((u) => setMostrarNavy(u?.mostrar_navy !== false)).catch(() => {});
   }, []);
 
   const carregar = async () => {
     setLoading(true);
     try {
-      const c = await base44.entities.Cliente.get(id);
+      const c = await db.entities.Cliente.get(id);
       setCliente(c);
       setNotaEdit(c.notas || "");
-      const avs = await base44.entities.Avaliacao.filter({ cliente_id: id }, "data", 200);
+      const avs = await db.entities.Avaliacao.filter({ cliente_id: id }, "data", 200);
       setAvaliacoes(avs);
     } finally {
       setLoading(false);
@@ -61,13 +61,13 @@ export default function ClienteDetail() {
   const ultima = avaliacoes[avaliacoes.length - 1];
 
   const excluirAvaliacao = async (a) => {
-    await base44.entities.Avaliacao.delete(a.id);
+    await db.entities.Avaliacao.delete(a.id);
     carregar();
   };
 
   const excluirCliente = async () => {
-    await base44.entities.Avaliacao.deleteMany({ cliente_id: cliente.id });
-    await base44.entities.Cliente.delete(cliente.id);
+    await db.entities.Avaliacao.deleteMany({ cliente_id: cliente.id });
+    await db.entities.Cliente.delete(cliente.id);
     navigate("/clientes");
   };
 
@@ -82,7 +82,7 @@ export default function ClienteDetail() {
         const bytes = new Uint8Array(16);
         crypto.getRandomValues(bytes);
         token = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-        await base44.entities.Cliente.update(cliente.id, { share_token: token });
+        await db.entities.Cliente.update(cliente.id, { share_token: token });
         setCliente((c) => ({ ...c, share_token: token }));
       }
       const link = `${window.location.origin}/relatorio/${token}`;
@@ -176,7 +176,7 @@ export default function ClienteDetail() {
             onClick={async () => {
               setSalvandoNota(true);
               try {
-                await base44.entities.Cliente.update(cliente.id, { notas: notaEdit.trim() || null });
+                await db.entities.Cliente.update(cliente.id, { notas: notaEdit.trim() || null });
                 setCliente((c) => ({ ...c, notas: notaEdit.trim() || null }));
               } finally {
                 setSalvandoNota(false);
