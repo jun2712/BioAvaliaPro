@@ -77,6 +77,18 @@ SUPABASE_SERVICE_ROLE_KEY=SUA_SECRET_OU_SERVICE_ROLE_KEY
 
 Use a chave **publishable/anon** no frontend e a chave **secret/service_role** apenas em scripts no servidor. Nunca coloque a chave secreta em variáveis `VITE_*`, no navegador ou no Git.
 
+Os arquivos locais de credenciais são todos ignorados pelo Git:
+
+| Arquivo | Para quê |
+|---|---|
+| `.env.local` | URL e chave pública do Supabase usadas pelo frontend |
+| `.env.import.local` | CLI/importação: project ref, access token, senha do banco e service role |
+| `.env.integrations.local` | Secrets das Edge Functions: Google Calendar e IA |
+| `.env.deploy.local` | Token/IDs da Vercel e credenciais do SMTP do Supabase Auth |
+| `.import-credentials.local` | Senhas temporárias geradas pelo bootstrap (apagar após a troca) |
+
+Não renomeie esses arquivos para `.env.example` nem os adicione ao Git.
+
 ### 1.2 Aplicar as migrations
 
 Com a CLI:
@@ -239,6 +251,11 @@ As funções ficam em `supabase/functions/` e podem ser publicadas todas de uma 
 ```bash
 set -a; source .env.import.local; set +a
 npx supabase@latest functions deploy --project-ref "$SUPABASE_PROJECT_REF"
+
+# Depois de preencher .env.integrations.local:
+npx supabase@latest secrets set \
+  --env-file .env.integrations.local \
+  --project-ref "$SUPABASE_PROJECT_REF"
 ```
 
 O `supabase/config.toml` marca apenas `getPublicReport`, `anamnesePublic` e `proteinaPublic` com `verify_jwt = false`. As demais exigem um JWT de usuário; `admin-users` confirma que o chamador é administrador antes de alterar papéis ou remover uma conta.

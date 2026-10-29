@@ -733,6 +733,8 @@ Implementation notes (as built):
 
 ### 10.1 Environment variables
 
+Local credential templates (all gitignored): `.env.local` (frontend), `.env.import.local` (CLI/import), `.env.integrations.local` (Edge Function secrets), `.env.deploy.local` (Vercel + SMTP) and `.import-credentials.local` (temporary passwords).
+
 Frontend (Vercel, safe to expose):
 
 ```env
